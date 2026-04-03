@@ -16,7 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M"
-_LOG_DIR = Path(__file__).resolve().parents[2] / "logs"
+_LOG_DIR = Path(__file__).resolve().parents[1] / "logs"
 
 def get_logger(name: str = "logger") -> logging.Logger:
     logger = logging.getLogger(name)
@@ -38,7 +38,7 @@ def get_logger(name: str = "logger") -> logging.Logger:
 
     return logger
 
-def choose_device(logger: logging.Logger = get_logger("utils"))->str:
+def choose_device(logger: logging.Logger)->str:
     if torch.backends.cuda.is_built():
         # usually on Windows machines with GPU
         device = "cuda"
@@ -70,7 +70,7 @@ def set_seed(seed: Optional[int] = None) -> None:
   torch.manual_seed(seed)
   torch.cuda.manual_seed_all(seed)
 
-def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, target_names: list[str], logger: logging.Logger = get_logger("utils")) -> pd.DataFrame:
+def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, target_names: list[str], logger: logging.Logger) -> pd.DataFrame:
 
     metrics = [
                 {
@@ -82,8 +82,8 @@ def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, target_names: list[st
             ]
 
     metrics_df = pd.DataFrame(metrics)
-    logger.info(f"Evaluation metrics: {metrics_df}")
-    logger.info(f"Classification report: {classification_report(y_true, y_pred, target_names=target_names, digits=3)}")
+    logger.info(f"Evaluation metrics:\n{metrics_df}")
+    logger.info(f"Classification report:\n{classification_report(y_true, y_pred, target_names=target_names, digits=3)}")
     return metrics_df
 
 

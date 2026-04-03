@@ -5,6 +5,15 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+def _softmax_rows(z: NDArray[np.floating[Any]]) -> NDArray[np.floating[Any]]:
+    """Stable softmax over the last axis (rows = samples). 
+    Computing for all sammples simultaneously speeds up computation."""
+    z = np.asarray(z, dtype=float)
+    z = z - np.max(z, axis=-1, keepdims=True)
+    exp_z = np.exp(z)
+    return exp_z / np.sum(exp_z, axis=-1, keepdims=True)
+
+
 class LogisticRegressionModel:
     def __init__(self, max_iter: int = 10000, random_state: int = 42) -> None:
         self.weight_matrix = 0
@@ -13,10 +22,10 @@ class LogisticRegressionModel:
         self.random_state = random_state
     
     def softmax(self, z: ArrayLike) -> NDArray[np.floating[Any]]:
-        z = np.asarray(z, dtype=float)
-        z = z - np.max(z)
-        exp_z = np.exp(z)
-        return exp_z / np.sum(exp_z)
+        z_arr = np.asarray(z, dtype=float)
+        if z_arr.ndim == 1:
+            return _softmax_rows(z_arr[np.newaxis, :])[0]
+        return _softmax_rows(z_arr)
 
     def cross_entropy(
         self,
@@ -47,23 +56,17 @@ class LogisticRegressionModel:
         y_train_e = np.zeros((num_samples,num_classes))
         y_train_e[np.arange(num_samples), y_train] = 1
 
-        yhat_train = np.zeros((num_samples,num_classes))
         previous_loss = -1
         flag_end = False
         num_iter = 0
         # Train until loss has small change or max number of iterations is reached
         while((not flag_end) and (num_iter<=self.max_iter)):
             num_iter += 1
-            loss_sum = 0
-
-            # Compute z, yhat, and cross entropy for each sample
-            for i,x in enumerate(X_train):
-                z = np.add(np.matmul(self.weight_matrix,x),self.bias_vector)
-                yhat_train[i] = self.softmax(z)
-                loss_sum += self.cross_entropy(yhat_train[i], y_train_e[i])
-
-            # Average loss over the samples
-            loss = loss_sum/num_samples
+            logits = X_train @ self.weight_matrix.T + self.bias_vector
+            yhat_train = _softmax_rows(logits)
+            loss = -np.mean(
+                np.sum(y_train_e * np.log(np.maximum(yhat_train, 1e-15)), axis=1)
+            )
 
             # End training if loss is barely changing (converged)
             if(previous_loss != -1):
@@ -82,10 +85,6 @@ class LogisticRegressionModel:
 
     def predict(self, X: NDArray[np.floating[Any]]) -> NDArray[np.integer[Any]]:
         """Return predicted class indices for input features X, without updating the model weights"""
-        num_samples = X.shape[0]
-        num_classes = self.weight_matrix.shape[0]
-        yhat = np.zeros((num_samples, num_classes))
-        for i, x in enumerate(X):
-            z = np.add(np.matmul(self.weight_matrix, x), self.bias_vector)
-            yhat[i] = self.softmax(z)
+        logits = X @ self.weight_matrix.T + self.bias_vector
+        yhat = _softmax_rows(logits)
         return np.argmax(yhat, axis=1)
