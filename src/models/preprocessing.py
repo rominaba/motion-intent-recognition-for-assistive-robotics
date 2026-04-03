@@ -40,12 +40,17 @@ def target_names_for_encoder(activity_labels: pd.DataFrame, le: LabelEncoder) ->
 def process_features_labels(
         X_train: pd.DataFrame, y_train: pd.DataFrame, 
         X_test: pd.DataFrame, y_test: pd.DataFrame,
+        activity_labels: pd.DataFrame,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
     le = LabelEncoder()
     y_train_enc = le.fit_transform(y_train["activity"].to_numpy())
     y_test_enc = le.transform(y_test["activity"].to_numpy())
+    target_names = target_names_for_encoder(activity_labels, le)
 
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_test_s = scaler.transform(X_test)
-    return X_train_s, y_train_enc, X_test_s, y_test_enc
+
+
+
+    return X_train_s, y_train_enc, X_test_s, y_test_enc, target_names

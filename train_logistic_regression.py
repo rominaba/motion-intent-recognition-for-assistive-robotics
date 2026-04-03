@@ -42,19 +42,19 @@ def main():
     X_train, y_train, X_test, y_test = load_data(args.data_path)
     activity_labels = load_target_label_set(args.data_path)
     # Encode labels and scale features
-    X_train, y_train, X_test, y_test = process_features_labels(X_train, y_train, X_test, y_test)
+    X_train, y_train, X_test, y_test, target_names = process_features_labels(X_train, y_train, X_test, y_test, activity_labels)
     logger.info(f"X_train: {X_train.shape}, y_train: {y_train.shape}, X_test: {X_test.shape}, y_test: {y_test.shape}")
     model = LogisticRegressionModel(random_state=args.random_state, max_iter=args.max_iter)
     logger.info(f"Training model...")
     model.fit(X_train, y_train, learning_rate=args.learning_rate)
     logger.info(f"Training completed")
-    logger.info(f"Paredicting train set:")
-    pred = model.predict(X_test)
-    evaluate_model(y_test, pred, activity_labels, logger=logger)
+    logger.info(f"Predicting train set:")
+    pred = model.predict(X_train)
+    evaluate_model(y_true=y_train, y_pred=pred, target_names=target_names, logger=logger)
 
-    logger.info(f"Paredicting test set:")
+    logger.info(f"Predicting test set:")
     pred = model.predict(X_test)
-    evaluate_model(y_test, pred, activity_labels, logger=logger)
+    evaluate_model(y_true=y_test, y_pred=pred, target_names=target_names, logger=logger)
 
 
 if __name__ == "__main__":
