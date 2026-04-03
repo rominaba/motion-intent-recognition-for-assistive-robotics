@@ -1,27 +1,40 @@
-import numpy as np
+from __future__ import annotations
 
-class Logistic_Regression_Model:
-    def __init__(self, max_iter=10000, random_state=42):
+from typing import Any
+
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+class LogisticRegressionModel:
+    def __init__(self, max_iter: int = 10000, random_state: int = 42) -> None:
         self.weight_matrix = 0
         self.bias_vector = 0
         self.max_iter = max_iter
         self.random_state = random_state
     
-    def softmax(self,z):
-        y = np.zeros(len(z))
-        sum_z = np.sum(np.exp(z))
-        for i,z_i in enumerate(z):
-            y[i] = np.exp(z_i)/sum_z
-        return y
+    def softmax(self, z: ArrayLike) -> NDArray[np.floating[Any]]:
+        z = np.asarray(z, dtype=float)
+        z = z - np.max(z)
+        exp_z = np.exp(z)
+        return exp_z / np.sum(exp_z)
 
-    def cross_entropy(self,p,q):
-        ce = 0
-        for i in range(len(p)):
-            ce += q[i]*np.log(p[i])
-        ce = -ce
-        return ce
+    def cross_entropy(
+        self,
+        probs: NDArray[np.floating[Any]],
+        target_onehot: NDArray[np.floating[Any]],
+    ) -> float:
+        # probs: predicted class probabilities; target_onehot: one-hot true labels
+        ce = 0.0
+        for i in range(len(probs)):
+            ce += target_onehot[i] * np.log(np.maximum(probs[i], 1e-15))
+        return -ce
 
-    def fit(self, X_train, y_train, learning_rate):
+    def fit(
+        self,
+        X_train: NDArray[np.floating[Any]],
+        y_train: NDArray[np.integer[Any]],
+        learning_rate: float,
+    ) -> None:
         # Initialize weights to small random numbers and biases to zero
         num_samples = X_train.shape[0]
         num_features = X_train.shape[1]
@@ -47,7 +60,7 @@ class Logistic_Regression_Model:
             for i,x in enumerate(X_train):
                 z = np.add(np.matmul(self.weight_matrix,x),self.bias_vector)
                 yhat_train[i] = self.softmax(z)
-                loss_sum += self.cross_entropy(yhat_train[i],y_train_e[i])
+                loss_sum += self.cross_entropy(yhat_train[i], y_train_e[i])
 
             # Average loss over the samples
             loss = loss_sum/num_samples
@@ -67,20 +80,12 @@ class Logistic_Regression_Model:
             self.weight_matrix -= learning_rate*w_grad
             self.bias_vector -= learning_rate*b_grad
 
-    def predict(self, X_test, y_test):
-        num_samples = X_test.shape[0]
-        num_classes = len(np.unique(y_test))
-
-        # One hot encoding
-        y_test_e = np.zeros((num_samples,num_classes))
-        y_test_e[np.arange(num_samples), y_test] = 1
-
-        yhat_test = np.zeros((num_samples,num_classes))
-        # Compute z, and yhat for each sample
-        for i,x in enumerate(X_test):
-                z = np.add(np.matmul(self.weight_matrix,x),self.bias_vector)
-                yhat_test[i] = self.softmax(z)
-
-        # Choose most likely class (highest probability) for each sample
-        yhat_test_class = np.argmax(yhat_test, axis=1)
-        return yhat_test_class
+    def predict(self, X: NDArray[np.floating[Any]]) -> NDArray[np.integer[Any]]:
+        """Return predicted class indices for input features X, without updating the model weights"""
+        num_samples = X.shape[0]
+        num_classes = self.weight_matrix.shape[0]
+        yhat = np.zeros((num_samples, num_classes))
+        for i, x in enumerate(X):
+            z = np.add(np.matmul(self.weight_matrix, x), self.bias_vector)
+            yhat[i] = self.softmax(z)
+        return np.argmax(yhat, axis=1)
