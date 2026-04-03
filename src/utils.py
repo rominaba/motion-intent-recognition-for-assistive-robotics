@@ -74,10 +74,10 @@ def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, target_names: list[st
 
     metrics = [
                 {
-                    "test_accuracy": accuracy_score(y_true, y_pred),
-                    "test_macro_precision": precision_score(y_true, y_pred, average="macro", zero_division=0),
-                    "test_macro_recall": recall_score(y_true, y_pred, average="macro", zero_division=0),
-                    "test_macro_f1": f1_score(y_true, y_pred, average="macro", zero_division=0),
+                    "accuracy": accuracy_score(y_true, y_pred),
+                    "macro_precision": precision_score(y_true, y_pred, average="macro", zero_division=0),
+                    "macro_recall": recall_score(y_true, y_pred, average="macro", zero_division=0),
+                    "macro_f1": f1_score(y_true, y_pred, average="macro", zero_division=0),
                 }
             ]
 
