@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -7,9 +10,9 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
 from src.models.logistic_regression import LogisticRegressionModel
+from src.models.pca_reduction import fit_best_pca_then_transform
 from src.models.preprocessing import load_data, load_target_label_set, process_features_labels
 from src.utils import DATA_DIR, PROJECT_ROOT, evaluate_model, get_logger, set_seed
-from datetime import datetime
 
 logger = get_logger("logistic_regression", write_to_file=True)
 optuna.logging.set_verbosity(optuna.logging.INFO)
@@ -51,13 +54,18 @@ def parse_args():
         "--val-fraction",
         type=float,
         default=0.2,
-        help="Holdout fraction of the training set used only when --n-trials > 0",
+        help="Holdout fraction for --pca (n_components search) and for --n-trials > 0 (Optuna)",
     )
     parser.add_argument(
         "--output-path",
         type=str,
         default=str(PROJECT_ROOT / "checkpoints" / f"logistic-regression-{datetime.now().strftime('%Y-%m-%d-%H-%M')}.npz"),
         help="Path to write trained weights and metadata (.npz)",
+    )
+    parser.add_argument(
+        "--pca",
+        action="store_true",
+        help="If set, search PCA n_components on a val split, then reduce features before training.",
     )
     return parser.parse_args()
 
@@ -70,6 +78,22 @@ def main():
     # Encode labels and scale features
     X_train, y_train, X_test, y_test, target_names = process_features_labels(X_train, y_train, X_test, y_test, activity_labels)
     logger.info(f"X_train: {X_train.shape}, y_train: {y_train.shape}, X_test: {X_test.shape}, y_test: {y_test.shape}")
+
+    if args.pca:
+        X_train, X_test, _, pca_meta = fit_best_pca_then_transform(
+            X_train,
+            y_train,
+            X_test,
+            random_state=args.random_state,
+            val_fraction=args.val_fraction,
+            logger=logger,
+        )
+        logger.info(
+            "After PCA: X_train %s, X_test %s (n_components=%s)",
+            X_train.shape,
+            X_test.shape,
+            pca_meta["n_components"],
+        )
 
     learning_rate = args.learning_rate
     max_iter = args.max_iter
