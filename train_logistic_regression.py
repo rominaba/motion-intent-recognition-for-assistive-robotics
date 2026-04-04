@@ -11,7 +11,7 @@ from src.models.preprocessing import load_data, load_target_label_set, process_f
 from src.utils import DATA_DIR, PROJECT_ROOT, evaluate_model, get_logger, set_seed
 from datetime import datetime
 
-logger = get_logger("logistic_regression")
+logger = get_logger("logistic_regression", write_to_file=True)
 optuna.logging.set_verbosity(optuna.logging.INFO)
 
 

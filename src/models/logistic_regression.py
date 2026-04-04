@@ -83,8 +83,13 @@ class LogisticRegressionModel:
             self.weight_matrix -= learning_rate*w_grad
             self.bias_vector -= learning_rate*b_grad
 
+    def predict_proba(self, X: NDArray[np.floating[Any]]) -> NDArray[np.floating[Any]]:
+        """Class probabilities (softmax logits), shape (n_samples, n_classes)."""
+        X_arr = np.asarray(X, dtype=float)
+        logits = X_arr @ self.weight_matrix.T + self.bias_vector
+        return _softmax_rows(logits)
+
     def predict(self, X: NDArray[np.floating[Any]]) -> NDArray[np.integer[Any]]:
         """Return predicted class indices for input features X, without updating the model weights"""
-        logits = X @ self.weight_matrix.T + self.bias_vector
-        yhat = _softmax_rows(logits)
+        yhat = self.predict_proba(X)
         return np.argmax(yhat, axis=1)
