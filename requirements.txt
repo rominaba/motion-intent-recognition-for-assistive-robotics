@@ -4,4 +4,5 @@ numpy
 pandas
 seaborn
 scikit-learn
+optuna
 nbformat
