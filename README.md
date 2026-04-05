@@ -17,8 +17,7 @@ Assistive robotic systems such as wearable exoskeletons aim to improve mobility 
 This project investigates the use of machine learning techniques to classify a set of human motion activities from wearable sensor data. An open-source Human Activity Recognition (HAR) dataset is used, containing three-dimensional linear acceleration and angular velocity measurements collected during various activities. The dataset is explored and preprocessed, and engineered features are extracted to represent the motion signals. The task is formulated as a multi-class classification problem.
 
 Several machine learning models were considered, including Logistic Regression, Support Vector Classifier (SVC), Support Vector Machines (SVM), and Multilayer Perceptron (MLP). After Exploratory Data Analysis (EDA) and preliminary experiments, Logistic Regression was chosen as the main approach while MLP was chosen as a more advanced solution to be compared on the side. The models are implemented from scratch and the training process has been enhanced by K-fold cross validation and hyperparameter tuning.
-(todo: add baseline comparison)
-The final models are evaluated on a held-out test set and compared with trained versions of Scikit-learn's implementations. Performance are assessed using standard classification metrics, including accuracy, precision, recall, and F1-score.
+The final models are evaluated on a held-out test set and compared with trained versions of Scikit-learn's implementations. Performance is assessed using standard classification metrics, including accuracy, precision, recall, and F1-score.
 
 ---
 
@@ -68,22 +67,22 @@ The EDA supports treating the problem as a **standard multiclass classification*
 
 ---
 
-## Modeling approach
+## Modeling Approach
 
-### Baseline and primary classifier: multinomial logistic regression
+### Baseline and Primary Classifier: Multinomial Logistic Regression
 
-The main classifier is **multinomial logistic regression** implemented **directly in NumPy** (`LogisticRegressionModel`). For input matrix \(X\), weight matrix \(W\), and bias vector \(b\), the model computes class probabilities via **softmax**(\(X W^\top + b\)) and minimizes **average cross-entropy** over training samples using **gradient descent**. Weights are initialized with small Gaussian noise; biases start at zero. The implementation exposes **`predict_proba`** and **`predict`** (argmax over classes).
+The main classifier is **multinomial logistic regression** implemented **directly in NumPy** (`LogisticRegressionModel`). For input matrix \(X\), weight matrix \(W\), and bias vector \(b\), the model computes class probabilities via **softmax**(\(X W^\top + b\)) and minimizes **average cross-entropy** over training samples using **Full-batch Gradient Descent**. Weights are initialized with small Gaussian noise; biases start at zero. The implementation exposes **`predict_proba`** and **`predict`** (argmax over classes). The vectorized implementation enables all samples to be processed simultaneously, improving efficiency during both training and inference.
 
 
-### Optional Dimensionality Reduction (PCA)
+#### Optional Dimensionality Reduction (PCA)
 
 When enabled (e.g. via `--pca` on the training script), **`fit_best_pca_then_transform`** searches over candidate **principal component counts** using a **held-out validation** split stratified by class. A **probe** logistic regression is fit on PCA-transformed training folds; the procedure balances **validation accuracy** with a stopping rule tied to **cumulative explained variance** (default target 90%). The final PCA is **refit on all training samples** before transforming both train and test, avoiding test leakage.
 
-### Hyperparameter tuning
+#### Hyperparameter tuning
 
-`train_logistic_regression.py` optionally runs **Optuna** trials over **learning rate** (log-uniform range) and **`max_iter`**, maximizing **validation accuracy** on a stratified split. When tuning is disabled, fixed defaults (e.g. learning rate 0.05, `max_iter` 10,000) are used.
+`train_logistic_regression.py` optionally runs **Optuna** trials over **`learning rate`** (log-uniform range) and **`max_iter`**, maximizing **validation accuracy** on a stratified split. When tuning is disabled, fixed defaults (e.g. learning rate 0.05, `max_iter` 10,000) are used. To prevent overfitting and keep the training process more efficient, penalty rates for large `max_iter` and small `learning_rate`
 
-### Training artifacts
+#### Training artifacts
 
 Trained **`weight_matrix`**, **`bias_vector`**, and metadata (e.g. learning rate, `max_iter`, random state, target names) can be written to a **compressed `.npz`** file under a configurable path (defaulting under `checkpoints/`).
 
@@ -105,6 +104,75 @@ python train_logistic_regression.py --data-path data
 ```
 
 Useful flags include **`--pca`** (enable PCA search and transform before training), **`--n-trials N`** with **`N > 0`** to enable Optuna, **`--val-fraction`** for validation size, and **`--output-path`** for the saved `.npz`.
+
+---
+
+## Results
+
+Experiments use the **official subject-wise train/test split** (no row-level leakage), **z-score standardization** fit on training data, and the same **label encoding** across runs. Unless noted, metrics are **test-set** figures from the notebooks.
+
+### Baseline model comparison (`notebooks/baseline.ipynb`)
+
+On the full **561-dimensional** feature vectors:
+
+| Model | Test accuracy | Macro F1 (approx.) |
+|--------|----------------|---------------------|
+| Decision tree (Gini) | **86.3%** | **0.86** |
+| scikit-learn multinomial logistic regression | **95.1%** | **0.95** |
+| Custom `LogisticRegressionModel` (NumPy) | **94.3%** | **0.94** |
+
+The linear models outperform the single decision tree by a wide margin. The **custom logistic regression** sits within about **0.7 percentage points** of sklearn’s test accuracy and macro F1, indicating that the from-scratch implementation matches the library baseline closely on this task.
+
+### PCA-reduced inputs (same notebook)
+
+Using `fit_best_pca_then_transform`, the search selected **67 principal components**, retaining about **91%** of the variance on the full training matrix. On the reduced data:
+
+| Model | Test accuracy | Notes |
+|--------|----------------|--------|
+| Decision tree (Gini) | **75.6%** | Large drop versus full features |
+| scikit-learn logistic regression | **92.5%** | Modest drop versus full features |
+| Custom logistic regression | **92.3%** | Similar to sklearn on reduced data |
+
+**Takeaway:** For this dataset, a moderate PCA compression **preserves most of the linear-model accuracy** while **hurting the decision tree** much more, consistent with trees exploiting fine-grained axis-aligned splits that are blurred by rotation in PC space.
+
+### Weight-based analysis (`notebooks/analyze_predictions.ipynb`)
+
+The notebook inspects a **saved checkpoint** of the trained multinomial logistic model (softmax weights and biases). **Global importance** (magnitude of weights across classes) is dominated by **gravity-acceleration statistics** (means, min/max, energy) and **angles to the gravity mean**, together with **gyroscope entropy** features. **Per-class** patterns show, for example, strong **orientation-related** weights for static activities (sitting, standing, laying) and **correlation / jerk / frequency-energy** terms for walking and stair activities. **Bias terms** are small in magnitude, so the model does not rely on a strong default class prior.
+
+### Feature ablation (`notebooks/feature_ablation.ipynb`)
+
+The same **custom logistic regression** is trained on **feature subsets** defined by name patterns in `features.txt`. Approximate **test accuracies**:
+
+| Subset | Test accuracy |
+|--------|----------------|
+| Gyroscope only | **81.1%** |
+| Accelerometer only | **89.7%** |
+| Body acceleration only | **91.5%** |
+| Gravity only | **86.0%** |
+| Time domain (`t*`) only | **94.6%** |
+| Frequency domain (`f*`) only | **87.5%** |
+| X-axis only | **91.2%** |
+| Y-axis only | **82.2%** |
+| Z-axis only | **76.6%** |
+| Multi-axis (combined-axis) features only | **89.4%** |
+
+---
+
+## Discussion
+
+**Overall performance.** On the UCI smartphone HAR benchmark with **new subjects** in the test set, **linear classifiers** reach **mid-90% test accuracy**, which supports treating the precomputed feature vectors as **linearly separable enough** for strong multiclass performance. The **custom logistic regression** is **competitive with sklearn**, which validates both the implementation and the preprocessing pipeline.
+
+Why the decision tree lags:
+The **decision tree** likely **underfits or splits less effectively** in a **high-dimensional, correlated** space compared to **dense linear boundaries** learned by logistic regression. After **PCA**, the tree’s accuracy **falls sharply**, while logistic regression **degrades only slightly**—suggesting that **a low-dimensional linear subspace** captures most of the label-relevant variation for a **linear** decision rule, but **not** the kind of **piecewise rules** the tree used in the original feature basis.
+
+PCA:
+Retaining **67** components (**~91%** variance) shrinks the input by roughly an **8×** factor versus 561 raw features. **Logistic regression** still reaches **~92–93%** test accuracy—only a few points below the full-feature models—so most of what a **linear** classifier needs is already captured in a **compact** variance-preserving subspace. That makes PCA a plausible **trade-off** when **memory, bandwidth, or inference cost** matter, accepting a small accuracy gap. The **decision tree** does not benefit PCA. The projection **mixes** original axes, which **weakens axis-aligned splits** and drives accuracy to **~76%**, so **PCA is a poor pairing** with this tree baseline. In short, PCA here behaves like **linear compression** that **preserves softmax-friendly structure** but **disrupts interpretable, coordinate-wise** rules.
+
+Interpretability and physiology:
+The logistic regression weights show that the model distinguishes activities using both movement patterns and body orientation relative to gravity. Dynamic activities such as walking, walking upstairs, and walking downstairs are mainly identified through acceleration, jerk, and gyroscope features, which capture differences in rhythm, impact, and coordination. For example, walking is associated with more regular and coordinated motion, while upstairs and downstairs movements show stronger gravity and energy-related patterns. In contrast, static activities such as sitting, standing, and laying are primarily separated by gravity and orientation features. Sitting and standing are characterized by stable posture-related signals, while laying is most strongly defined by a different alignment of the body relative to gravity. Overall, the results suggest that the model is learning meaningful physical patterns, with motion features distinguishing active behaviors and gravity-based features distinguishing stationary postures.
+
+Ablation insights:
+**Time-domain features alone** nearly match the **full** feature set, so **most discriminative signal** for this model lives in **time statistics** rather than **frequency-only** views. **Frequency-only** inputs **lose clarity on static classes**, which the notebook attributes to **weaker orientation/gravity cues** in that subset. **Gyro-only** data struggles to separate **similar rotational patterns** across walking variants and **low-motion** static classes; **accelerometer-only** data still confuses **walking directions** and **sitting vs. standing**, where **gravity and subtle motion** together matter. **Body-acceleration** features achieve **strong dynamic-activity** scores but still **confuse static** classes without **full orientation** context, while **gravity-only** features separate **dynamic vs. static** and **laying** well but **not fine-grained walking** or **sitting vs. standing**. **Single-axis** subsets show **X** as most informative among the three phone axes in isolation, while **Z** is weakest—consistent with **how much each axis encodes** the activities in this mounting. Together, the ablations support the design of the **full 561-feature** vector: **complementary modalities and domains** are needed for **robust** subject-general recognition.
 
 ---
 
