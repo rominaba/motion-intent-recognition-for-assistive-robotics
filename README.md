@@ -16,8 +16,8 @@ Assistive robotic systems such as wearable exoskeletons aim to improve mobility 
 
 This project investigates the use of machine learning techniques to classify a set of human motion activities from wearable sensor data. An open-source Human Activity Recognition (HAR) dataset is used, containing three-dimensional linear acceleration and angular velocity measurements collected during various activities. The dataset is explored and preprocessed, and engineered features are extracted to represent the motion signals. The task is formulated as a multi-class classification problem.
 
-Several machine learning models were considered, including Logistic Regression, Support Vector Classifier (SVC), Support Vector Machines (SVM), and Multilayer Perceptron (MLP). After Exploratory Data Analysis (EDA) and preliminary experiments, Logistic Regression was chosen as the main approach while MLP was chosen as a more advanced solution to be compared on the side. The models are implemented from scratch and the training process has been enhanced by K-fold cross validation and hyperparameter tuning.
-The final models are evaluated on a held-out test set and compared with trained versions of Scikit-learn's implementations. Performance is assessed using standard classification metrics, including accuracy, precision, recall, and F1-score.
+Several machine learning models were considered, including Logistic Regression, Support Vector Classifier (SVC), Support Vector Machines (SVM), and Multilayer Perceptron (MLP). After Exploratory Data Analysis (EDA) and preliminary experiments, **logistic regression** was chosen as the primary approach, while an **MLP** in **PyTorch** (`notebooks/MLPClassifier.ipynb`) provides a **nonlinear** comparison with **grid-searched** hyperparameters. The **multinomial logistic regression** core is implemented **from scratch** in NumPy; sklearn implementations are used for additional baselines.
+The final models are evaluated on a held-out test set and compared with trained versions of Scikit-learn's implementations where applicable. Performance is assessed using standard classification metrics, including accuracy, precision, recall, and F1-score.
 
 ---
 
@@ -38,7 +38,7 @@ According to the dataset documentation, feature values were **normalized and bou
 
 ---
 
-## Repository content
+## Repository Content
 
 | Location | Description |
 |----------|-------------|
@@ -48,12 +48,12 @@ According to the dataset documentation, feature values were **normalized and bou
 | `src/models/pca_reduction.py` | Optional **PCA**: searches the number of components on a **stratified train/validation** split using a lightweight logistic-regression probe, prefers the smallest dimensionality that explains at least a target fraction of variance (default 90%), then refits PCA on the **full** training set and transforms train and test. |
 | `src/utils.py` | Project paths (`PROJECT_ROOT`, `DATA_DIR`), logging, random seeds (including PyTorch for other experiments), device helpers, and **`evaluate_model`** (accuracy, macro precision/recall/F1, sklearn `classification_report`). |
 | `train_logistic_regression.py` | Command-line entry point: load data → preprocess → optional PCA → optional **Optuna** hyperparameter search over learning rate and `max_iter` → train on full (possibly reduced) training set → report train/test metrics → save weights and metadata to **`.npz`**. |
-| `notebooks/` | Exploratory analysis, baselines, extended logistic-regression experiments, and feature ablation studies. |
+| `notebooks/` | Exploratory analysis, baselines, extended logistic-regression experiments, feature ablation, and **`MLPClassifier.ipynb`** (PyTorch MLPs with grid search). |
 | `requirements.txt` | Python dependencies |
 
 ---
 
-## Exploratory data analysis
+## Exploratory Data Analysis
 
 Exploratory work is documented primarily in **`notebooks/EDA.ipynb`**. The notebook:
 
@@ -78,23 +78,15 @@ The main classifier is **multinomial logistic regression** implemented **directl
 
 When enabled (e.g. via `--pca` on the training script), **`fit_best_pca_then_transform`** searches over candidate **principal component counts** using a **held-out validation** split stratified by class. A **probe** logistic regression is fit on PCA-transformed training folds; the procedure balances **validation accuracy** with a stopping rule tied to **cumulative explained variance** (default target 90%). The final PCA is **refit on all training samples** before transforming both train and test, avoiding test leakage.
 
-#### Hyperparameter tuning
+#### Hyperparameter Tuning
 
 `train_logistic_regression.py` optionally runs **Optuna** trials over **`learning rate`** (log-uniform range) and **`max_iter`**, maximizing **validation accuracy** on a stratified split. When tuning is disabled, fixed defaults (e.g. learning rate 0.05, `max_iter` 10,000) are used. To prevent overfitting and keep the training process more efficient, penalty rates for large `max_iter` and small `learning_rate`
 
-#### Training artifacts
+#### Training Artifacts
 
 Trained **`weight_matrix`**, **`bias_vector`**, and metadata (e.g. learning rate, `max_iter`, random state, target names) can be written to a **compressed `.npz`** file under a configurable path (defaulting under `checkpoints/`).
 
----
-
-## Evaluation
-
-**Metrics.** Evaluation uses **accuracy**, **macro-averaged precision, recall, and F1**, and a per-class **`classification_report`**, via `src/utils.evaluate_model` and the baseline notebook.
-
----
-
-## How to run the Training Script
+#### How to run the Training Script
 
 Create a virtual environment, install dependencies, and run from the repository root:
 
@@ -105,35 +97,49 @@ python train_logistic_regression.py --data-path data
 
 Useful flags include **`--pca`** (enable PCA search and transform before training), **`--n-trials N`** with **`N > 0`** to enable Optuna, **`--val-fraction`** for validation size, and **`--output-path`** for the saved `.npz`.
 
+
+### Multilayer Perceptron (PyTorch, `notebooks/MLPClassifier.ipynb`)
+
+As a **nonlinear** baseline, the notebook implements a custom **`MLPClassifier`** (`torch.nn.Module`) with three depth presets:
+
+- **Small:** 561 → 128 → 64 → 6 classes  
+- **Medium:** 561 → 256 → 128 → 64 → 6  
+- **Large:** 561 → 512 → 256 → 128 → 64 → 6  
+
+Each hidden block uses **ReLU**, **batch normalization**, and **dropout (0.4)**; the **final two layers** omit batch norm and dropout (as in the notebook). Training uses **mini-batches**, the **Adam** optimizer (**weight decay** \(5 \times 10^{-4}\)), and **cross-entropy with label smoothing (0.1)**. Each epoch updates on the training split and scores **validation accuracy**; **weights with the best validation accuracy are checkpointed** and restored after training.
+
+The original training matrix is split **80% / 20%** with **`train_test_split`** (**stratified**, fixed random seed) into **train** and **validation** subsets. A **grid search** over **architecture size**, **learning rate**, **batch size**, and **short runs (15 epochs)** picks hyperparameters by **validation accuracy**. The chosen configuration is then trained **again for 30 epochs** with the same train/val split before evaluation on the **official UCI test set** (still subject-held-out). A second experiment applies **`fit_best_pca_then_transform`** (same PCA helper as logistic regression) and repeats the grid search and refit on **PCA-transformed** features.
+
+---
+
+## Evaluation
+
+**Metrics.** Evaluation uses **accuracy**, **macro-averaged precision, recall, and F1**, and a per-class **`classification_report`**, via `src/utils.evaluate_model` and the baseline notebook.
+
 ---
 
 ## Results
 
 Experiments use the **official subject-wise train/test split** (no row-level leakage), **z-score standardization** fit on training data, and the same **label encoding** across runs. Unless noted, metrics are **test-set** figures from the notebooks.
 
-### Baseline model comparison (`notebooks/baseline.ipynb`)
+### Test-set comparison: all models (`baseline.ipynb` + `MLPClassifier.ipynb`)
 
-On the full **561-dimensional** feature vectors:
+Metrics are computed on the **official UCI subject-held-out test set** after **standardization** (fit on training data). **PCA** uses **`fit_best_pca_then_transform`** (**67** components, **~91%** variance explained in the logged runs).
 
-| Model | Test accuracy | Macro F1 (approx.) |
-|--------|----------------|---------------------|
-| Decision tree (Gini) | **86.3%** | **0.86** |
-| scikit-learn multinomial logistic regression | **95.1%** | **0.95** |
-| Custom `LogisticRegressionModel` (NumPy) | **94.3%** | **0.94** |
+| Model | Accuracy | Macro precision | Macro recall | Macro F1 |
+|--------|----------|-----------------|--------------|----------|
+| Decision tree (all features) | 0.862572 | 0.862767 | 0.859023 | 0.859807 |
+| sklearn’s LR (all features) | 0.950797 | 0.954340 | 0.949763 | 0.950958 |
+| Our custom LR (all features) | 0.943332 | 0.946819 | 0.942326 | 0.943596 |
+| Our MLP (all features) | 0.9545 | 0.9571\* | 0.9545\* | 0.9544\* |
+| Decision tree (after PCA) | 0.755684 | 0.756102 | 0.751139 | 0.752533 |
+| sklearn’s LR (after PCA) | 0.924669 | 0.925247 | 0.923099 | 0.923808 |
+| Our custom LR (after PCA) | 0.922633 | 0.923419 | 0.920580 | 0.921508 |
+| Our MLP (after PCA) | 0.9186 | 0.9201\* | 0.9186\* | 0.9185\* |
 
-The linear models outperform the single decision tree by a wide margin. The **custom logistic regression** sits within about **0.7 percentage points** of sklearn’s test accuracy and macro F1, indicating that the from-scratch implementation matches the library baseline closely on this task.
+Note: The **MLP notebook** trains on **80%** of the training rows and uses **20%** for **validation and checkpointing**; **`baseline.ipynb`** fits logistic models on the **full** training matrix. Numbers are therefore **not from an identical training-data protocol**; the MLP result is still a fair **held-out subject test** evaluation, but **direct comparison** to the baseline table should keep this split difference in mind.
 
-### PCA-reduced inputs (same notebook)
-
-Using `fit_best_pca_then_transform`, the search selected **67 principal components**, retaining about **91%** of the variance on the full training matrix. On the reduced data:
-
-| Model | Test accuracy | Notes |
-|--------|----------------|--------|
-| Decision tree (Gini) | **75.6%** | Large drop versus full features |
-| scikit-learn logistic regression | **92.5%** | Modest drop versus full features |
-| Custom logistic regression | **92.3%** | Similar to sklearn on reduced data |
-
-**Takeaway:** For this dataset, a moderate PCA compression **preserves most of the linear-model accuracy** while **hurting the decision tree** much more, consistent with trees exploiting fine-grained axis-aligned splits that are blurred by rotation in PC space.
+The linear models outperform the **full-feature** decision tree by a wide margin; **our custom LR** is within about **0.7** points of sklearn on accuracy and macro F1. **Our MLP** (full features) matches the **strong linear** models on test accuracy in this run. **PCA** hurts the **tree** most; **logistic** models lose a few points; the **MLP** also drops more under PCA than the linear baselines in this experiment, and encounters extra confusion between **walking** and **walking upstairs**, in addition to **sitting vs. standing**.
 
 ### Weight-based analysis (`notebooks/analyze_predictions.ipynb`)
 
@@ -160,13 +166,15 @@ The same **custom logistic regression** is trained on **feature subsets** define
 
 ## Discussion
 
-**Overall performance.** On the UCI smartphone HAR benchmark with **new subjects** in the test set, **linear classifiers** reach **mid-90% test accuracy**, which supports treating the precomputed feature vectors as **linearly separable enough** for strong multiclass performance. The **custom logistic regression** is **competitive with sklearn**, which validates both the implementation and the preprocessing pipeline.
+Overall performance On the UCI smartphone HAR benchmark with **new subjects** in the test set, **strong linear models** (sklearn and custom logistic regression) reach about **94–95% test accuracy** and **~0.94–0.95 macro F1** (`baseline.ipynb`). The **PyTorch MLP** in `MLPClassifier.ipynb` lands in the **same accuracy band** (**~95.5%**); its printed precision/recall/F1 use **weighted** averaging and are **~0.95–0.957**, so **extra depth and nonlinearities do not clearly beat** a well-tuned **linear softmax** on these **engineered features**. The **custom NumPy logistic regression** remains **slightly below** sklearn and the MLP on accuracy. The **custom logistic regression** still **matches sklearn closely**, which validates the implementation and preprocessing.
+
 
 Why the decision tree lags:
 The **decision tree** likely **underfits or splits less effectively** in a **high-dimensional, correlated** space compared to **dense linear boundaries** learned by logistic regression. After **PCA**, the tree’s accuracy **falls sharply**, while logistic regression **degrades only slightly**—suggesting that **a low-dimensional linear subspace** captures most of the label-relevant variation for a **linear** decision rule, but **not** the kind of **piecewise rules** the tree used in the original feature basis.
 
 PCA:
 Retaining **67** components (**~91%** variance) shrinks the input by roughly an **8×** factor versus 561 raw features. **Logistic regression** still reaches **~92–93%** test accuracy—only a few points below the full-feature models—so most of what a **linear** classifier needs is already captured in a **compact** variance-preserving subspace. That makes PCA a plausible **trade-off** when **memory, bandwidth, or inference cost** matter, accepting a small accuracy gap. The **decision tree** does not benefit PCA. The projection **mixes** original axes, which **weakens axis-aligned splits** and drives accuracy to **~76%**, so **PCA is a poor pairing** with this tree baseline. In short, PCA here behaves like **linear compression** that **preserves softmax-friendly structure** but **disrupts interpretable, coordinate-wise** rules.
+For the MLP, **PCA + refit** **hurts** generalization, similar in spirit to the **tree** degrading under PCA but with a **smaller** gap than the decision tree. The notebook’s **smaller** winning architecture under PCA suggests **simpler** models were favored once inputs were **compressed and linearly mixed**.
 
 Interpretability and physiology:
 The logistic regression weights show that the model distinguishes activities using both movement patterns and body orientation relative to gravity. Dynamic activities such as walking, walking upstairs, and walking downstairs are mainly identified through acceleration, jerk, and gyroscope features, which capture differences in rhythm, impact, and coordination. For example, walking is associated with more regular and coordinated motion, while upstairs and downstairs movements show stronger gravity and energy-related patterns. In contrast, static activities such as sitting, standing, and laying are primarily separated by gravity and orientation features. Sitting and standing are characterized by stable posture-related signals, while laying is most strongly defined by a different alignment of the body relative to gravity. Overall, the results suggest that the model is learning meaningful physical patterns, with motion features distinguishing active behaviors and gravity-based features distinguishing stationary postures.
