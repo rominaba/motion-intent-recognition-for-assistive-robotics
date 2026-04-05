@@ -107,30 +107,52 @@ def main():
         )
 
         def objective(trial: optuna.Trial) -> float:
-            lr = trial.suggest_float("learning_rate", 1e-4, 0.5, log=True)
-            n_iter = trial.suggest_int("max_iter", 500, 15000)
+            lr = trial.suggest_float("learning_rate", 1e-3, 0.1, log=True)
+            n_iter = trial.suggest_int("max_iter", 500, 10000)
+
             m = LogisticRegressionModel(random_state=args.random_state, max_iter=n_iter)
             m.fit(X_tr, y_tr, learning_rate=lr)
-            return float(accuracy_score(y_val, m.predict(X_val)))
+
+            val_acc = float(accuracy_score(y_val, m.predict(X_val)))
+
+            # Small regularization against inefficient hyperparameters.
+            # Keep accuracy as the main target, but break ties in favor of
+            # larger learning rates and fewer iterations to improve efficiency and prevent overfitting
+            iter_penalty = 0.01 * (n_iter / 10000)
+            lr_penalty = 0.01 * max(0.0, np.log10(1e-2 / lr))
+
+            score = val_acc - iter_penalty - lr_penalty
+
+            trial.set_user_attr("val_accuracy", val_acc)
+            return score
 
         study = optuna.create_study(
             direction="maximize",
             sampler=optuna.samplers.TPESampler(seed=args.random_state),
+            pruner=optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=0),
         )
         study.optimize(objective, n_trials=args.n_trials, show_progress_bar=True)
+
         learning_rate = study.best_params["learning_rate"]
         max_iter = study.best_params["max_iter"]
-        logger.info("Optuna best params: %s (val accuracy %.4f)", study.best_params, study.best_value)
+
+        logger.info(
+            "Optuna best params: %s (penalized score %.4f, val accuracy %.4f)",
+            study.best_params,
+            study.best_value,
+            study.best_trial.user_attrs["val_accuracy"],
+        )
 
     model = LogisticRegressionModel(random_state=args.random_state, max_iter=max_iter)
-    logger.info(f"Training model...")
+    logger.info("Training model...")
     model.fit(X_train, y_train, learning_rate=learning_rate)
-    logger.info(f"Training completed")
-    logger.info(f"Predicting train set:")
+    logger.info("Training completed")
+
+    logger.info("Predicting train set:")
     pred = model.predict(X_train)
     evaluate_model(y_true=y_train, y_pred=pred, target_names=target_names, logger=logger)
 
-    logger.info(f"Predicting test set:")
+    logger.info("Predicting test set:")
     pred = model.predict(X_test)
     evaluate_model(y_true=y_test, y_pred=pred, target_names=target_names, logger=logger)
     
