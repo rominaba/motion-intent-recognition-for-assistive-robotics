@@ -87,4 +87,15 @@ def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, target_names: list[st
     logger.info(f"Classification report:\n{classification_report(y_true, y_pred, target_names=target_names, digits=3)}")
     return metrics_df
 
+def average_metrics(metrics_df: list[pd.DataFrame], logger: logging.Logger) -> tuple[pd.DataFrame, pd.DataFrame]:
 
+    average_metrics_df = pd.DataFrame(np.mean([run.values for run in metrics_df], axis=0), 
+                                      index=metrics_df[0].index,
+                                      columns=metrics_df[0].columns)
+    std_metrics_df = pd.DataFrame(np.std([run.values for run in metrics_df], axis=0), 
+                                      index=metrics_df[0].index,
+                                      columns=metrics_df[0].columns)
+    
+    logger.info(f"Average evaluation metrics:\n{average_metrics_df}")
+    logger.info(f"Standard deviation of evaluation metrics:\n{std_metrics_df}")
+    return average_metrics_df, std_metrics_df
