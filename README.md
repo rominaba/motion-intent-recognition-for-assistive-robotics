@@ -24,7 +24,7 @@ The final models are evaluated on a held-out test set and compared with trained 
 
 ## Data Source and Properties
 
-The studied dataset is **UCI “Human Activity Recognition Using Smartphones”**; the original study is documented in `data/README.txt`.
+The studied dataset is **UCI “Human Activity Recognition Using Smartphones”**, which must be downloaded and placed in `data/` directory prior to running any experiments.
 
 Data were collected from **30 volunteers** (ages 19–48) performing **six activities**: walking, walking upstairs, walking downstairs, sitting, standing, and laying. A smartphone (Samsung Galaxy S II) was worn on the **waist**. **Triaxial linear acceleration** and **triaxial angular velocity** were recorded at **50 Hz**. 
 
