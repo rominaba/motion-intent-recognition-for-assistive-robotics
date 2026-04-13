@@ -25,7 +25,9 @@ The final models are evaluated on a held-out test set and compared with trained 
 ## Data Source and Properties
 
 The studied dataset is **UCI “Human Activity Recognition Using Smartphones”**, which must be downloaded and placed in `data/` directory prior to running any experiments.
-
+The data may be accessed through one of these links:
+https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones  
+https://archive-beta.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones
 Data were collected from **30 volunteers** (ages 19–48) performing **six activities**: walking, walking upstairs, walking downstairs, sitting, standing, and laying. A smartphone (Samsung Galaxy S II) was worn on the **waist**. **Triaxial linear acceleration** and **triaxial angular velocity** were recorded at **50 Hz**. 
 
 The authors cleaned up the data by removing noise and separating useful movement from background effects like gravity. Then, they split the data into small overlapping chunks about 2.5 seconds long to capture continuous activity without gaps. For each chunk, they calculated a large set of measurements (561 features) that describe the movement, looking at both how it changes over time (time-based) and the patterns or rhythms within it (frequency-based).
