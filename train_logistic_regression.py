@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 import optuna
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
@@ -17,7 +18,7 @@ from src.utils import DATA_DIR, PROJECT_ROOT, evaluate_model, get_logger, set_se
 
 logger = get_logger("logistic_regression", write_to_file=True)
 optuna.logging.set_verbosity(optuna.logging.INFO)
-
+current_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train logistic regression on motion intent data.")
@@ -60,7 +61,7 @@ def parse_args():
     parser.add_argument(
         "--output-path",
         type=str,
-        default=str(PROJECT_ROOT / "checkpoints" / f"logistic-regression-{datetime.now().strftime('%Y-%m-%d-%H-%M')}.npz"),
+        default=str(PROJECT_ROOT / "checkpoints" / f"logistic-regression-{current_time}.npz"),
         help="Path to write trained weights and metadata (.npz)",
     )
     parser.add_argument(
@@ -162,6 +163,20 @@ def main():
         model.fit(X_train, y_train, learning_rate=learning_rate)
         logger.info("Training completed")
 
+        if model.loss_history:
+            graphs_dir = PROJECT_ROOT / "graphs"
+            graphs_dir.mkdir(parents=True, exist_ok=True)
+            iterations = np.arange(len(model.loss_history)) + 1
+            plt.figure()
+            plt.plot(iterations, model.loss_history)
+            plt.xlabel("Iteration")
+            plt.ylabel("Loss")
+            plt.title("Training loss")
+            loss_path = graphs_dir / f"training_loss_{current_time}.png"
+            plt.savefig(loss_path, dpi=150, bbox_inches="tight")
+            plt.close()
+            logger.info("Saved training loss plot to %s", loss_path.resolve())
+
         logger.info("Predicting train set:")
         pred = model.predict(X_train)
         metrics_train_df.append(evaluate_model(y_true=y_train, y_pred=pred, target_names=target_names, logger=logger))
@@ -170,6 +185,7 @@ def main():
         pred = model.predict(X_test)
         metrics_test_df.append(evaluate_model(y_true=y_test, y_pred=pred, target_names=target_names, logger=logger))
         
+
         if args.output_path:
             out = Path(args.output_path)
             out = out.with_name(f"{out.stem}_{trial}{out.suffix}")
