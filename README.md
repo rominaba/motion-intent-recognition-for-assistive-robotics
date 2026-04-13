@@ -133,11 +133,11 @@ Metrics are computed on the **official UCI subject-held-out test set** after **s
 | Decision tree (all features) | 0.858975 ± 0.004229 | 0.858413 ± 0.004546 | 0.855565 ± 0.004366 | 0.855948 ± 0.004279 |
 | sklearn’s LR (all features)  | 0.952019 ± 0.001837 | 0.955530 ± 0.001512 | 0.950909 ± 0.001811 | 0.952114 ± 0.001770 |
 | Our custom LR (all features) | 0.944079 ± 0.000736 | 0.947411 ± 0.001071 | 0.943112 ± 0.000764 | 0.944330 ± 0.000784 |
-| Our MLP (all features)       | 0.957380 ± 0.005172 | 0.959975 ± 0.004653 | 0.956309 ± 0.005471 | 0.957298 ± 0.005281 |
+| Our MLP (all features)       | 0.957245 ± 0.006697 | 0.960038 ± 0.005185 | 0.956407 ± 0.007116 | 0.957320 ± 0.006817 |
 | Decision tree (after PCA)    | 0.761452 ± 0.002736 | 0.762879 ± 0.003138 | 0.757075 ± 0.002741 | 0.758662 ± 0.002772 |
 | sklearn’s LR (after PCA)     | 0.924669 ± 0.001336 | 0.925365 ± 0.001386 | 0.922977 ± 0.001222 | 0.923754 ± 0.001267 |
 | Our custom LR (after PCA)    | 0.922362 ± 0.001387 | 0.923287 ± 0.001233 | 0.920260 ± 0.001461 | 0.921230 ± 0.001406 |
-| Our MLP (after PCA)          | 0.928741 ± 0.004690 | 0.929706 ± 0.004658 | 0.927434 ± 0.004811 | 0.928075 ± 0.004758 |
+| Our MLP (after PCA)          | 0.922701 ± 0.006194 | 0.924038 ± 0.005444 | 0.920419 ± 0.006911 | 0.921454 ± 0.006659 |
 
 Note: The **MLP notebook** trains on **80%** of the training rows and uses **20%** for **validation and checkpointing**; `**baseline.ipynb`** refits on the **full** training matrix after tuning each seed. Numbers are therefore **not from an identical training-data protocol**; the MLP result is still a fair **held-out subject test** evaluation, but **direct comparison** to the baseline table should keep this split difference in mind.
 
