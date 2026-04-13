@@ -51,7 +51,7 @@ class LogisticRegressionModel:
         np_rng = np.random.default_rng(self.random_state)
         self.weight_matrix = np_rng.normal(loc=0.0, scale=0.01, size=(num_classes,num_features))
         self.bias_vector = np.zeros(num_classes)
-
+        self.loss_history = []
         # One hot encoding for classes
         y_train_e = np.zeros((num_samples,num_classes))
         y_train_e[np.arange(num_samples), y_train] = 1
@@ -67,7 +67,7 @@ class LogisticRegressionModel:
             loss = -np.mean(
                 np.sum(y_train_e * np.log(np.maximum(yhat_train, 1e-15)), axis=1)
             )
-
+            self.loss_history.append(loss)
             # End training if loss is barely changing (converged)
             if(previous_loss != -1):
                 if(abs(loss - previous_loss) <= 0.000001):
