@@ -13,6 +13,7 @@ Romina Bahrami
 ---
 
 ## Abstract
+
 Assistive robotic systems such as wearable exoskeletons aim to improve mobility and independence for individuals with movement impairments. For these systems to provide effective support, they must accurately infer a user’s motion intent, such as walking, sitting, or standing, in real time and adapt their assistance accordingly. Traditional rule-based approaches often rely on predefined thresholds or heuristic rules applied to sensor signals, which may struggle to generalize across users and complex movement patterns. Machine learning offers a data-driven alternative that can learn patterns directly from sensor data and improve the accuracy and adaptability of motion intent recognition.
 
 This project investigates the use of machine learning techniques to classify a set of human motion activities from wearable sensor data. An open-source Human Activity Recognition (HAR) dataset is used, containing three-dimensional linear acceleration and angular velocity measurements collected during various activities. The dataset is explored and preprocessed, and engineered features are extracted to represent the motion signals. The task is formulated as a multi-class classification problem.
@@ -24,10 +25,10 @@ The final models are evaluated on a held-out test set and compared with trained 
 
 ## Data Source and Properties
 
-The studied dataset is **UCI “Human Activity Recognition Using Smartphones”**, which must be downloaded and placed in `data/` directory prior to running any experiments.
-The data may be accessed through one of these links:
-https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones  
-https://archive-beta.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones
+The studied dataset is **UCI “Human Activity Recognition Using Smartphones”**, which must be downloaded and placed in `data/` directory prior to running any experiments.  
+The data may be accessed through one of these links:    
+[https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones](https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones)  
+[https://archive-beta.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones](https://archive-beta.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones)    
 Data were collected from **30 volunteers** (ages 19–48) performing **six activities**: walking, walking upstairs, walking downstairs, sitting, standing, and laying. A smartphone (Samsung Galaxy S II) was worn on the **waist**. **Triaxial linear acceleration** and **triaxial angular velocity** were recorded at **50 Hz**. 
 
 The authors cleaned up the data by removing noise and separating useful movement from background effects like gravity. Then, they split the data into small overlapping chunks about 2.5 seconds long to capture continuous activity without gaps. For each chunk, they calculated a large set of measurements (561 features) that describe the movement, looking at both how it changes over time (time-based) and the patterns or rhythms within it (frequency-based).
@@ -60,7 +61,7 @@ According to the dataset documentation, feature values were **normalized and bou
 
 ## Exploratory Data Analysis
 
-Exploratory work is documented primarily in `**notebooks/EDA.ipynb**`. The notebook:
+Exploratory work is documented primarily in `**notebooks/EDA.ipynb`**. The notebook:
 
 - Loads **feature names**, **training features**, **activity labels**, **subject IDs**, and the **activity label dictionary**.
 - Reports **dataset shape** (sample count × 561 features), lists the **six activity names**, and verifies **absence of missing values** in features, labels, and subject columns for the training split (and similarly for the test split where applicable).
@@ -80,7 +81,7 @@ The main classifier is **multinomial logistic regression** implemented **directl
 
 #### Optional Dimensionality Reduction (PCA)
 
-When enabled (e.g. via `--pca` on the training script), `**fit_best_pca_then_transform**` searches over candidate **principal component counts** using a **held-out validation** split stratified by class. A **probe** logistic regression is fit on PCA-transformed training folds; the procedure balances **validation accuracy** with a stopping rule tied to **cumulative explained variance** (default target 90%). The final PCA is **refit on all training samples** before transforming both train and test, avoiding test leakage.
+When enabled (e.g. via `--pca` on the training script), `**fit_best_pca_then_transform`** searches over candidate **principal component counts** using a **held-out validation** split stratified by class. A **probe** logistic regression is fit on PCA-transformed training folds; the procedure balances **validation accuracy** with a stopping rule tied to **cumulative explained variance** (default target 90%). The final PCA is **refit on all training samples** before transforming both train and test, avoiding test leakage.
 
 #### Hyperparameter Tuning
 
@@ -127,11 +128,11 @@ Experiments use the **official subject-wise train/test split** (no row-level lea
 
 ### Test-set comparison: all models (`baseline.ipynb` + `MLPClassifier.ipynb`)
 
-Metrics are computed on the **official UCI subject-held-out test set** after **standardization** (fit on training data). **PCA** uses `**fit_best_pca_then_transform`** (**67** components, **~91%** variance explained in the logged runs). Rows from `**baseline.ipynb**` report **mean ± standard deviation** over **5** random seeds (Optuna on a stratified validation split per seed, then refit on the **full** training set). **MLP** rows report **mean ± standard deviation** over **5** seeds from `**MLPClassifier.ipynb**` (80/20 train/validation for grid search and checkpointing, then official test evaluation).
+Metrics are computed on the **official UCI subject-held-out test set** after **standardization** (fit on training data). **PCA** uses `**fit_best_pca_then_transform`** (**67** components, **~91%** variance explained in the logged runs). Rows from `**baseline.ipynb`** report **mean ± standard deviation** over **5** random seeds (Optuna on a stratified validation split per seed, then refit on the **full** training set). **MLP** rows report **mean ± standard deviation** over **5** seeds from `**MLPClassifier.ipynb`** (80/20 train/validation for grid search and checkpointing, then official test evaluation).
 
 
-| Model                        | Accuracy           | Macro precision    | Macro recall       | Macro F1           |
-| ---------------------------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| Model                        | Accuracy            | Macro precision     | Macro recall        | Macro F1            |
+| ---------------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
 | Decision tree (all features) | 0.858975 ± 0.004229 | 0.858413 ± 0.004546 | 0.855565 ± 0.004366 | 0.855948 ± 0.004279 |
 | sklearn’s LR (all features)  | 0.952019 ± 0.001837 | 0.955530 ± 0.001512 | 0.950909 ± 0.001811 | 0.952114 ± 0.001770 |
 | Our custom LR (all features) | 0.944079 ± 0.000736 | 0.947411 ± 0.001071 | 0.943112 ± 0.000764 | 0.944330 ± 0.000784 |
@@ -140,6 +141,7 @@ Metrics are computed on the **official UCI subject-held-out test set** after **s
 | sklearn’s LR (after PCA)     | 0.924669 ± 0.001336 | 0.925365 ± 0.001386 | 0.922977 ± 0.001222 | 0.923754 ± 0.001267 |
 | Our custom LR (after PCA)    | 0.922362 ± 0.001387 | 0.923287 ± 0.001233 | 0.920260 ± 0.001461 | 0.921230 ± 0.001406 |
 | Our MLP (after PCA)          | 0.922701 ± 0.006194 | 0.924038 ± 0.005444 | 0.920419 ± 0.006911 | 0.921454 ± 0.006659 |
+
 
 Note: The **MLP notebook** trains on **80%** of the training rows and uses **20%** for **validation and checkpointing**; `**baseline.ipynb`** refits on the **full** training matrix after tuning each seed. Numbers are therefore **not from an identical training-data protocol**; the MLP result is still a fair **held-out subject test** evaluation, but **direct comparison** to the baseline table should keep this split difference in mind.
 
