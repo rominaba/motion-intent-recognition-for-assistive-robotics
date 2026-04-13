@@ -210,6 +210,8 @@ __marimo__/
 # Model checkpoints
 checkpoints/
 
+data/
+
 # Runtime logs
 logs/
 graphs/
